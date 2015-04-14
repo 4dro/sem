@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>Sem library</title>
+	<script type="text/javascript" src="../require/require.js"></script>
+
+<script type="text/javascript">
+	require(['sem/sem'], function(sem){
+		sem.open('db', function onCreate(tr){
+			debugger;
+			tr.createTable('tb1', {col1: 'bool', col2: 'int'});
+			tr.createTable('tb2', {col1: 'bool', col2: 'int'});
+			debugger;
+		}, function onOpen(db){
+
+			insertIfNeeded(db, goNext);
+			//goNext();
+
+			function goNext(err){
+				if (err)
+				{
+					debugger;
+					return;
+				}
+				doTheStuff(db);
+			}
+		});
+
+		function doTheStuff(db)
+		{
+			db.transaction(function(tr){
+				tr.query('tb1', {col2: {min: 1, max: 1}}, function(row, param){
+					console.log('tb1', row);
+					tr.remove('tb1', row.id, function(res, err){
+						console.log('row deleted');
+					});
+				});
+			}, function onError(err){
+				debugger;
+			}, function onFinish(){
+				debugger;
+			})
+		}
+
+		function insertIfNeeded(db, handler)
+		{
+			db.transaction(function(tr){
+				tr.insert('tb1', {col1: false, col2: '3'});
+				tr.insert('tb1', {col1: false, col2: '2'});
+				tr.insert('tb1', {col1: false, col2: '1'});
+				tr.insert('tb2', {col1: true, col2: '1'});
+				tr.insert('tb2', {col1: true, col2: '2'});
+				tr.insert('tb2', {col1: true, col2: '3'});
+			}, function (err){
+				handler(err);
+			}, function(){
+				handler();
+			});
+		}
+	});
+</script>
+
+</head>
+<body>
+
+</body>
+</html>
