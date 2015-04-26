@@ -15,41 +15,36 @@ function()
 
 	ReadTrans.prototype =
 	{
-		query: function (table, index, callback, param) {
+		query: function (table, onCol, callback, param) {
 			var sql = 'SELECT * FROM "' + table + '"';
 			var cols = [];
 			var args = [];
-			if (index)
+			if (onCol)
 			{
-				for (var col in index)
+				for (var col in onCol)
 				{
-					var value = index[col];
+					var value = onCol[col];
 					if (value.hasOwnProperty('eq'))
 					{
-
-					}
-					var min = value.min;
-					var max = value.max;
-					if (min == max)
-					{
 						cols.push(col + ' = ?');
-						args.push(min);
+						args.push(value.eq);
 						continue;
 					}
-					if (min)
+					if (value.hasOwnProperty('lt'))
 					{
-						cols.push(col + ' >= ?');
-						args.push(min);
+						cols.push(col + ' < ?');
+						args.push(value.lt);
+						continue;
 					}
-					if (max)
+					if (value.hasOwnProperty('gt'))
 					{
-						cols.push(col + ' <= ?');
-						args.push(max);
+						cols.push(col + ' > ?');
+						args.push(value.lt);
+						continue;
 					}
-
 				}
 			}
-			if (cols)
+			if (cols.length)
 			{
 				sql += ' WHERE ';
 				for (var i = 0; i < cols.length; i++)
@@ -78,53 +73,63 @@ function()
 		query: ReadTrans.prototype.query,
 
 // ***************************** DDL *****************************************************
-		createTable: function(name, columns, handler)
+	// Creates a table. Columns object defines column types
+	createTable: function(name, columns, handler)
+	{
+		var colTypes = ['bool', 'string(bytes)', 'int(bytes)', 'ref(tb)'];
+		var sql = 'CREATE TABLE "' + name + '" (' +
+			'id INTEGER PRIMARY KEY AUTOINCREMENT, ';
+		var refs = [];
+		for (var colName in columns)
 		{
-			var colTypes = ['bool', 'string(bytes)', 'int(bytes)', 'ref(tb)'];
-			var sql = 'CREATE TABLE "' + name + '" (' +
-				'id INTEGER PRIMARY KEY AUTOINCREMENT, ';
-			var refs = [];
-			for (var col in columns)
+			var type = columns[colName];
+			var sqlType = '';
+			var reRes = [];
+			if (type == 'bool')
 			{
-				var type = columns[col];
-				var sqlType = '';
-				if (type == 'bool')
-				{
-					sqlType = 'BOOL';
-				}
-				else if (type.indexOf('string') == 0)
-				{
-					sqlType = 'STRING';
-				}
-				else if (type.indexOf('int') == 0)
-				{
-					sqlType = 'INTEGER';
-				}
-				else if (type.indexOf('ref') == 0)
-				{
-					sqlType = 'INTEGER';
-					refs.push('');
-				}
-				else
-				{
-					throw new Error('Invalid column type!');
-				}
-				sql += col + ' ' + type + ', ';
+				sqlType = 'BOOL';
 			}
-			sql = sql.substr(0, sql.length - 2);
-			sql += ')';
-			this.tr.executeSql(sql, null, handler);
-		},
+			else if (type == 'real')
+			{
+				sqlType = 'REAL';
+			}
+			else if ((reRes = /^string(?:\(\s*(\d+)\s*\))?$/.exec(type)) != null)
+			{
+				sqlType = 'STRING';
+				if (reRes[1])
+				{
+					sqlType += '(' + reRes[1] + ')';
+				}
+			}
+			else if ((reRes = /^int(?:(\s*(\d+)\s*)\))?$/.exec(type)) != null)
+			{
+				sqlType = 'INTEGER';
+			}
+			else if ((reRes = /^ref\(\s*(\S+)\s*\)$/.exec(type)) != null)
+			{
+				sqlType = 'INTEGER REFERENCES ' + reRes[1] + '(id)';
+				refs.push('');
+			}
+			else
+			{
+				throw new Error('Table creation: invalid column type ' + type);
+			}
+			sql += colName + ' ' + sqlType + ', ';
+		}
+		sql = sql.substr(0, sql.length - 2);
+		sql += ')';
+		this.tr.executeSql(sql, null, handler);
+	},
 
-		updateTable: function(name)
-		{
-			this.tr.executeSql('ALTER TABLE ' + name + "");
-		},
+	updateTable: function(name)
+	{
+		this.tr.executeSql('ALTER TABLE ' + name + "");
+	},
 
-		dropTable: function(name)
-		{
-			this.tr.executeSql('DROP TABLE ' + name + "");
-		},
+	dropTable: function(name)
+	{
+		this.tr.executeSql('DROP TABLE ' + name + "");
+	},
 
 // ********************** Data modification ****************************************************
 		insert: function(table, data, handler)
@@ -171,37 +176,47 @@ function()
 
 	DB.prototype =
 	{
-		transaction: function(operations, onError, onSuccess)
+		transaction: function(operationsFn, onError, onSuccess)
 		{
 			this.db.transaction(function(r){
-				operations(new Trans(r));
+				operationsFn(new Trans(r));
 			}, onError, onSuccess);
 		},
 
-		readTransaction: function(operations, onError, onSuccess)
+		readTransaction: function(operationsFn, onError, onSuccess)
 		{
 			this.db.readTransaction(function(r){
-				operations(new Trans(r));
+				operationsFn(new Trans(r));
 			}, onError, onSuccess);
 		}
 	};
 
 return {
-	open: function(name, createHandler, openHandler)
+	// Opens a database. If it does not exist, it would be created
+	open: function(name, displayName, createHandler, openHandler, errHandler)
 	{
-		var db = openDatabase(name, '', 'displayName', 1024 * 1024 * 1);
+		var db;
+		try
+		{
+			db = openDatabase(name, '', displayName, 1024 * 1024 * 1);
+		}
+		catch (e)
+		{
+			errHandler(err);
+		}
 		// https://code.google.com/p/chromium/issues/detail?id=324593
 		var sem = new DB(db);
+		// we always set db version to '1'
 		if (db.version)
 		{
 			openHandler(sem);
 		}
-		else
+		else	// if version is not set we consider the database has been just created
 		{
 			db.changeVersion(db.version, '1', function(tr){
 				createHandler(new Trans(tr));
 			}, function onErr(err){
-				debugger;
+				errHandler(err);
 			}, function onSucc(){
 				openHandler(sem);
 			});

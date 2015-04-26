@@ -3,11 +3,11 @@
 <head>
 	<meta charset="UTF-8">
 	<title>Sem library</title>
-	<script type="text/javascript" src="../require/require.js"></script>
+	<script type="text/javascript" src="./require/require.js"></script>
 
 <script type="text/javascript">
 	require(['sem/sem'], function(sem){
-		sem.open('db', function onCreate(tr){
+		sem.open('db', 'label', function onCreate(tr){
 			debugger;
 			tr.createTable('tb1', {col1: 'bool', col2: 'int'});
 			tr.createTable('tb2', {col1: 'bool', col2: 'int'});
