@@ -15,7 +15,7 @@ function()
 
 	ReadTrans.prototype =
 	{
-		queryTable: function (table, onCol, callback, rowHandler) {
+		queryTable: function (table, onCol, callback, rowHandler, errHandler) {
 			var sql = 'SELECT * FROM "' + table + '"';
 			var cols = [];
 			var args = [];
@@ -49,9 +49,9 @@ function()
 				sql += ' WHERE ';
 				for (var i = 0; i < cols.length; i++)
 				{
-					if (i && i != cols.length - 1)
+					if (i)
 					{
-						sql += ' AND';
+						sql += ' AND ';
 					}
 					sql += cols[i];
 				}
@@ -85,7 +85,12 @@ function()
 					callback(rows);
 				}
 			}, function(trans, err){
-				debugger;
+				if (errHandler)
+				{
+					return !errHandler();
+				}
+				console.error('SQL error while reading table: ' + err.message + ', code: ' + err.code);
+				return true;
 			});
 		}
 	};
@@ -173,9 +178,17 @@ function()
 			sql = sql.substr(0, sql.length - 2);
 			sql += ')';
 			this.tr.executeSql(sql, cols, function(tr, result){
-				handler(result.insertId);
+				if (handler)
+				{
+					handler(result.insertId);
+				}
 			}, function(tr, err){
-				errHandler(err);
+				if (errHandler)
+				{
+					return !errHandler(err);
+				}
+				console.error('SQL error while inserting row: ' + err.message + ', code: ' + err.code);
+				return true;
 			});
 		},
 
@@ -199,12 +212,14 @@ function()
 			}, function(tr, err){
 				if (errHandler)
 				{
-					errHandler(err);
+					return !errHandler(err);
 				}
+				console.error('SQL error while updating row: ' + err.message + ', code: ' + err.code);
+				return true;
 			});
 		},
 
-		removeRow: function(table, id, handler, errHandler)
+		deleteRow: function(table, id, handler, errHandler)
 		{
 			var params = [id];
 			this.tr.executeSql('DELETE FROM "' + table + '" WHERE id = ?', params, function(tr, res){
@@ -215,8 +230,10 @@ function()
 			}, function(tr, err){
 				if (errHandler)
 				{
-					errHandler(err);
+					return !errHandler(err);
 				}
+				console.error('SQL error while deleting row: ' + err.message + ', code: ' + err.code);
+				return true;
 			});
 		}
 
