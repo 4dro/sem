@@ -3,7 +3,7 @@
 <head>
 	<meta charset="UTF-8">
 	<title>Sem library</title>
-	<script type="text/javascript" src="./require/require.js"></script>
+	<script type="text/javascript" src="http://4dro.github.io/simplerequire/code/loader.js"></script>
 
 <script type="text/javascript">
 	require(['sem/sem'], function(sem){
@@ -30,9 +30,9 @@
 		function doTheStuff(db)
 		{
 			db.transaction(function(tr){
-				tr.query('tb1', {col2: {min: 1, max: 1}}, function(row, param){
+				tr.queryTable('tb1', {col2: {min: 1, max: 1}}, function(row, param){
 					console.log('tb1', row);
-					tr.remove('tb1', row.id, function(res, err){
+					tr.deleteRow('tb1', row.id, function(res, err){
 						console.log('row deleted');
 					});
 				});
@@ -46,12 +46,12 @@
 		function insertIfNeeded(db, handler)
 		{
 			db.transaction(function(tr){
-				tr.insert('tb1', {col1: false, col2: '3'});
-				tr.insert('tb1', {col1: false, col2: '2'});
-				tr.insert('tb1', {col1: false, col2: '1'});
-				tr.insert('tb2', {col1: true, col2: '1'});
-				tr.insert('tb2', {col1: true, col2: '2'});
-				tr.insert('tb2', {col1: true, col2: '3'});
+				tr.insertRow('tb1', {col1: false, col2: '3'});
+				tr.insertRow('tb1', {col1: false, col2: '2'});
+				tr.insertRow('tb1', {col1: false, col2: '1'});
+				tr.insertRow('tb2', {col1: true, col2: '1'});
+				tr.insertRow('tb2', {col1: true, col2: '2'});
+				tr.insertRow('tb2', {col1: true, col2: '3'});
 			}, function (err){
 				handler(err);
 			}, function(){
