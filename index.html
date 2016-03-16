@@ -4,9 +4,10 @@
 	<meta charset="UTF-8">
 	<title>Sem library</title>
 	<script type="text/javascript" src="http://4dro.github.io/simplerequire/code/loader.js"></script>
+	<script type="text/javascript" src="./sem/test.js"></script>
 
 <script type="text/javascript">
-	require(['sem/sem'], function(sem){
+	/*require(['sem/sem'], function(sem){
 		sem.open('db', 'label', function onCreate(tr){
 			debugger;
 			tr.createTable('tb1', {col1: 'bool', col2: 'int'});
@@ -36,8 +37,7 @@
 						console.log('row deleted');
 					});
 				});
-			}, function onError(err){
-				debugger;
+			}, function onsuccess(){
 			}, function onFinish(){
 				debugger;
 			})
@@ -58,7 +58,7 @@
 				handler();
 			});
 		}
-	});
+	});*/
 </script>
 
 </head>

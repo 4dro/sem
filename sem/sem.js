@@ -39,7 +39,7 @@ function()
 					if (value.hasOwnProperty('gt'))
 					{
 						cols.push(col + ' > ?');
-						args.push(value.lt);
+						args.push(value.gt);
 						continue;
 					}
 				}
@@ -263,6 +263,84 @@ function()
 			this.db.readTransaction(function(r){
 				operationsFn(new Trans(r));
 			}, onError, onSuccess);
+		},
+
+		createTable: function(table, columns, onSuccess, onError)
+		{
+			this.transaction(function(tr){
+				tr.createTable(table, columns, function(){
+					console.log('Table ' + table + ' created successfully.');
+				});
+			}, function (){
+				//console.log('Table ' + table + ' created successfully.');
+				//onSuccess && onSuccess();
+			}, function (err){
+				console.error(err);
+				onError && onError();
+			});
+		},
+
+		dropTable: function(table, onSuccess, onError)
+		{
+			var SQL = 'DROP TABLE ' + table;
+			this.db.transaction(function(tr){
+				tr.executeSql(SQL, null, function(){
+					console.log('Table ' + table + ' dropped successfully.');
+					onSuccess && onSuccess();
+				});
+			}, function (){
+				//console.log('Table ' + table + ' dropped successfully.');
+				//onSuccess && onSuccess();
+			}, function (err){
+				//console.error(err);
+				//onError && onError();
+			});
+		},
+
+		insertRows: function(table, rows, handler)
+		{
+			this.transaction(function(tr){
+				rows.forEach(function(row){
+					tr.insertRow(table, row);
+				});
+			}, handler, function onError(e){
+				console.error(e);
+				debugger;
+			});
+		},
+
+		fetch: function(table, params, handler)
+		{
+			this.transaction(function(tr){
+				tr.queryTable(table, params, function(rows, param){
+					handler && handler(rows);
+				});
+			}, function onSuccess(){
+			}, function onError(e){
+				console.error(e);
+				debugger;
+			});
+		},
+
+		printTable: function(table)
+		{
+			this.fetch(table, null, function(rows){
+				if (!rows.length) return;
+				var separator = '\t\t\t';
+				var keys = Object.keys(rows[0]);
+				console.log('Table: ' + table + '\n' + keys.join(separator));
+				var print = '';
+				for (var i = 0; i < rows.length; i++)
+				{
+					for (var j = 0; j < keys.length; j++)
+					{
+						print += rows[i][keys[j]] + separator;
+					}
+					print += '\n';
+				}
+				print += 'Total: ' + rows.length;
+				console.log(print);
+			});
 		}
 	};
 
